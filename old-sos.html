@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FaceType — Type or Lose a Face</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0c0c0c;
+    --surface: #141414;
+    --surface2: #1c1c1c;
+    --red: #ff2222;
+    --red-dim: #7a1010;
+    --green: #2dff6e;
+    --yellow: #f5c518;
+    --text: #e8e8e8;
+    --text-dim: #5a5a5a;
+    --text-mid: #999;
+    --border: #2a2a2a;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .logo span { color: var(--red); }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .status-dot.live { background: var(--red); animation: pulse 1.2s infinite; }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  /* ── LEFT PANEL: CAMERA ── */
+  #camera-panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    gap: 20px;
+    overflow: hidden;
+  }
+
+  .panel-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+  }
+
+  .camera-wrapper {
+    position: relative;
+    flex: 1;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--border);
+  }
+
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    display: block;
+  }
+
+  #face-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    transform: scaleX(-1);
+    pointer-events: none;
+  }
+
+  /* Face overlay drawn on canvas — landmarks */
+  .camera-overlay-text {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    font-size: 0.65rem;
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+
+  #no-camera-msg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+  }
+
+  .camera-icon {
+    font-size: 3rem;
+    opacity: 0.3;
+  }
+
+  /* ── MISTAKE COUNTER ── */
+  .mistake-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mistake-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .mistake-count {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.2rem;
+    color: var(--red);
+    line-height: 1;
+  }
+
+  .mistake-max {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  .face-features {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .feature-tag {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: 1px solid;
+    transition: all 0.4s ease;
+  }
+
+  .feature-tag.alive {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(45,255,110,0.07);
+  }
+  .feature-tag.dead {
+    border-color: var(--red-dim);
+    color: var(--red-dim);
+    background: rgba(255,34,34,0.05);
+    text-decoration: line-through;
+    opacity: 0.5;
+  }
+
+  /* ── RIGHT PANEL: TYPING TEST ── */
+  #typing-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    gap: 20px;
+    overflow: hidden;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 20px;
+  }
+
+  .stat-box {
+    flex: 1;
+    background: var(--surface2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+  }
+
+  .stat-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .stat-value.wpm { color: var(--green); }
+  .stat-value.acc { color: var(--yellow); }
+  .stat-value.err { color: var(--red); }
+
+  /* ── PASSAGE ── */
+  #passage-wrapper {
+    flex: 1;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #passage {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.35rem;
+    line-height: 1.9;
+    letter-spacing: 0.02em;
+    word-break: break-word;
+    color: var(--text-dim);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  #passage .char { display: inline; transition: color 0.15s, background 0.15s; }
+  #passage .char.correct { color: var(--text); }
+  #passage .char.incorrect {
+    color: var(--red);
+    background: rgba(255,34,34,0.18);
+    border-radius: 2px;
+  }
+  #passage .char.cursor {
+    border-left: 2px solid var(--red);
+    margin-left: -1px;
+    animation: blink 0.9s step-end infinite;
+  }
+
+  @keyframes blink { 0%,100%{border-color:var(--red)} 50%{border-color:transparent} }
+
+  /* ── INPUT ── */
+  #type-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    padding: 14px 18px;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+    height: 70px;
+  }
+  #type-input:focus { border-color: var(--red); }
+  #type-input::placeholder { color: var(--text-dim); }
+  #type-input:disabled { opacity: 0.4; }
+
+  /* ── FOOTER CONTROLS ── */
+  .controls {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-mid);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--red); color: var(--text); }
+  .btn.primary {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--red);
+  }
+  .btn.primary:hover { background: #cc0000; }
+
+  /* ── RESULT OVERLAY ── */
+  #result-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+  }
+  #result-overlay.show { display: flex; }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px 56px;
+    text-align: center;
+    min-width: 380px;
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.4rem;
+    margin-bottom: 8px;
+  }
+
+  .result-sub {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    margin-bottom: 32px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .result-stats {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 36px;
+  }
+
+  .result-stat { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .result-stat-val { font-family: 'DM Serif Display', serif; font-size: 2.4rem; line-height:1; }
+  .result-stat-lbl { font-size: 0.6rem; text-transform: uppercase; letter-spacing:2px; color:var(--text-dim); }
+
+  /* ── MISTAKE FLASH ── */
+  @keyframes flashRed {
+    0%{background:rgba(255,34,34,0.25)} 100%{background:transparent}
+  }
+  .flash-red { animation: flashRed 0.4s ease; }
+
+  /* face-gone animation */
+  .feature-tag.just-died {
+    animation: featureDie 0.5s ease;
+  }
+  @keyframes featureDie {
+    0%{transform:scale(1)} 40%{transform:scale(1.3)} 100%{transform:scale(1)}
+  }
+
+  /* timer */
+  #timer-display { font-size: 0.9rem; color: var(--text-mid); }
+
+  /* tooltip/hint */
+  .hint {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Face<span>Type</span></div>
+  <div class="header-meta">
+    <span><span class="status-dot live" id="cam-status-dot"></span><span id="cam-status-text">camera off</span></span>
+    <span id="timer-display">00:00</span>
+    <span id="face-status">face: <span style="color:var(--text-mid)">–</span></span>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: Camera + face map -->
+  <div id="camera-panel">
+    <div class="panel-label">Face Tracker</div>
+
+    <div class="camera-wrapper">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="face-canvas"></canvas>
+      <div class="camera-overlay-text" id="cam-overlay"></div>
+      <div id="no-camera-msg">
+        <div class="camera-icon">📷</div>
+        <div>Camera not active</div>
+        <button class="btn primary" id="start-camera-btn" onclick="startCamera()">Enable Camera</button>
+      </div>
+    </div>
+
+    <!-- Mistake counter + feature tags -->
+    <div class="mistake-bar">
+      <div class="mistake-header">
+        <div>
+          <div class="panel-label">Mistakes Made</div>
+          <div class="mistake-count" id="mistake-count-display">0</div>
+        </div>
+        <div class="mistake-max">max 7 — then you're faceless</div>
+      </div>
+      <div class="face-features" id="feature-tags"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Typing test -->
+  <div id="typing-panel">
+    <div class="panel-label">Typing Test</div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-label">WPM</div>
+        <div class="stat-value wpm" id="wpm-val">–</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Accuracy</div>
+        <div class="stat-value acc" id="acc-val">–</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Errors</div>
+        <div class="stat-value err" id="err-val">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Progress</div>
+        <div class="stat-value" id="prog-val">0%</div>
+      </div>
+    </div>
+
+    <div id="passage-wrapper">
+      <div id="passage"></div>
+    </div>
+
+    <textarea
+      id="type-input"
+      placeholder="Click here and start typing…"
+      spellcheck="false"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+    ></textarea>
+
+    <div class="controls">
+      <button class="btn primary" onclick="startTest()">New Test</button>
+      <button class="btn" onclick="resetTest()">Reset</button>
+      <button class="btn" onclick="cyclePassage()">↻ Passage</button>
+    </div>
+    <div class="hint">Tab → focus input &nbsp;·&nbsp; Type the passage above &nbsp;·&nbsp; Each mistake costs a face feature</div>
+  </div>
+</main>
+
+<!-- Result overlay -->
+<div id="result-overlay">
+  <div class="result-card">
+    <div class="result-title" id="result-title">Test Complete</div>
+    <div class="result-sub" id="result-sub">Here's how you did</div>
+    <div class="result-stats">
+      <div class="result-stat">
+        <div class="result-stat-val wpm" id="r-wpm">–</div>
+        <div class="result-stat-lbl">WPM</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-val acc" id="r-acc">–</div>
+        <div class="result-stat-lbl">Accuracy</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-val err" id="r-err">–</div>
+        <div class="result-stat-lbl">Mistakes</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button class="btn primary" onclick="startTest(); closeResult()">Play Again</button>
+      <button class="btn" onclick="closeResult()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- MediaPipe Face Mesh -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+<script>
+// ─────────────────────────────────────────────
+//  PASSAGES — Add more strings to this array!
+// ─────────────────────────────────────────────
+const PASSAGES = [
+  "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump!",
+  "In the beginning the Universe was created. This has made a lot of people very angry and been widely regarded as a bad move.",
+  "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness.",
+  "All that is gold does not glitter, not all those who wander are lost; the old that is strong does not wither, deep roots are not reached by the frost.",
+  "To be, or not to be, that is the question: Whether 'tis nobler in the mind to suffer the slings and arrows of outrageous fortune.",
+  "The greatest trick the devil ever pulled was convincing the world he did not exist. And like that, he is gone.",
+];
+
+// ─────────────────────────────────────────────
+//  FACE FEATURES — in order of removal
+// ─────────────────────────────────────────────
+const FEATURES = [
+  { name: "Left Eyebrow", key: "leftBrow" },
+  { name: "Right Eyebrow", key: "rightBrow" },
+  { name: "Nose", key: "nose" },
+  { name: "Left Eye", key: "leftEye" },
+  { name: "Right Eye", key: "rightEye" },
+  { name: "Mouth", key: "mouth" },
+  { name: "Ears", key: "ears" },
+];
+
+// MediaPipe landmark indices for each feature
+const LANDMARK_GROUPS = {
+  leftBrow:  [336, 296, 334, 293, 300, 283, 282, 295, 285, 276, 283, 282, 295, 285, 336, 296, 334],
+  rightBrow: [70,  63,  105, 66,  107, 55,  65,  52,  53,  46,  55,  65,  52,  53,   70, 63, 105],
+  leftEye:   [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398],
+  rightEye:  [33,  7,   163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246],
+  nose:      [168, 6,   197, 195, 5,   4,   1,   19,  94,  2,   164, 0],
+  mouth:     [61,  185, 40,  39,  37,  0,   267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146, 61],
+  ears:      [234, 227, 116, 123, 147, 213, 215, 454, 447, 345, 352, 376, 433, 435],
+};
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let currentPassageIdx = 0;
+let passageChars = [];
+let typedIndex = 0;
+let mistakeCount = 0;
+let totalMistakes = 0;
+let startTime = null;
+let timerInterval = null;
+let testActive = false;
+let testComplete = false;
+
+// Feature visibility — which features are hidden
+let hiddenFeatures = new Set();
+
+// Camera / MediaPipe
+let cameraActive = false;
+let faceMeshReady = false;
+let latestLandmarks = null;
+let faceMesh = null;
+let mpCamera = null;
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+function init() {
+  buildFeatureTags();
+  loadPassage(0);
+  document.getElementById('type-input').addEventListener('input', onInput);
+  document.getElementById('type-input').addEventListener('keydown', onKeydown);
+}
+
+function buildFeatureTags() {
+  const container = document.getElementById('feature-tags');
+  container.innerHTML = '';
+  FEATURES.forEach(f => {
+    const tag = document.createElement('div');
+    tag.className = 'feature-tag alive';
+    tag.id = `tag-${f.key}`;
+    tag.textContent = f.name;
+    container.appendChild(tag);
+  });
+}
+
+// ─────────────────────────────────────────────
+//  PASSAGE LOADING
+// ─────────────────────────────────────────────
+function loadPassage(idx) {
+  const passage = PASSAGES[idx];
+  passageChars = passage.split('');
+  typedIndex = 0;
+  mistakeCount = 0;
+  totalMistakes = 0;
+  hiddenFeatures = new Set();
+  testActive = false;
+  testComplete = false;
+  clearTimer();
+  buildFeatureTags();
+  renderPassage();
+  updateStats();
+  document.getElementById('type-input').value = '';
+  document.getElementById('type-input').disabled = false;
+  document.getElementById('type-input').focus();
+  document.getElementById('mistake-count-display').textContent = '0';
+}
+
+function renderPassage() {
+  const el = document.getElementById('passage');
+  el.innerHTML = passageChars.map((ch, i) => {
+    let cls = 'char';
+    if (i < typedIndex) {
+      cls += ` correct`;
+    } else if (i === typedIndex) {
+      cls += ' cursor';
+    }
+    return `<span class="char" id="c${i}">${ch === ' ' ? '&nbsp;' : escHtml(ch)}</span>`;
+  }).join('');
+  // Apply coloring
+  recolorChars();
+}
+
+function recolorChars() {
+  // This is done dynamically via charState array
+}
+
+function escHtml(ch) {
+  if (ch === '<') return '&lt;';
+  if (ch === '>') return '&gt;';
+  if (ch === '&') return '&amp;';
+  return ch;
+}
+
+// charState tracks 'correct', 'incorrect', 'pending'
+let charState = []; // populated lazily
+
+function initCharState() {
+  charState = passageChars.map(() => 'pending');
+}
+
+// Full re-render of passage chars based on charState
+function fullRenderPassage() {
+  const el = document.getElementById('passage');
+  let html = '';
+  for (let i = 0; i < passageChars.length; i++) {
+    const ch = passageChars[i] === ' ' ? '&nbsp;' : escHtml(passageChars[i]);
+    let cls = 'char';
+    if (charState[i] === 'correct') cls += ' correct';
+    else if (charState[i] === 'incorrect') cls += ' incorrect';
+    if (i === typedIndex && !testComplete) cls += ' cursor';
+    html += `<span class="${cls}">${ch}</span>`;
+  }
+  el.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────
+//  TYPING LOGIC
+// ─────────────────────────────────────────────
+function onKeydown(e) {
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    if (typedIndex > 0) {
+      typedIndex--;
+      charState[typedIndex] = 'pending';
+      fullRenderPassage();
+      updateStats();
+    }
+  }
+}
+
+function onInput(e) {
+  if (testComplete) { this.value = ''; return; }
+
+  const input = e.target;
+  const typed = input.value;
+  if (!typed.length) return;
+
+  // Start test on first character
+  if (!testActive) {
+    startTimer();
+    testActive = true;
+    if (!charState.length || charState.length !== passageChars.length) {
+      initCharState();
+    }
+  }
+
+  const char = typed[typed.length - 1]; // last character typed
+  input.value = ''; // clear input — we manage state ourselves
+
+  if (typedIndex >= passageChars.length) return;
+
+  const expected = passageChars[typedIndex];
+  if (char === expected) {
+    charState[typedIndex] = 'correct';
+  } else {
+    charState[typedIndex] = 'incorrect';
+    totalMistakes++;
+    mistakeCount++;
+    onMistake();
+  }
+  typedIndex++;
+
+  fullRenderPassage();
+  updateStats();
+
+  if (typedIndex >= passageChars.length) {
+    endTest();
+  }
+}
+
+function onMistake() {
+  document.getElementById('mistake-count-display').textContent = totalMistakes;
+  document.getElementById('err-val').textContent = totalMistakes;
+
+  // Flash the passage wrapper
+  const wrapper = document.getElementById('passage-wrapper');
+  wrapper.classList.remove('flash-red');
+  void wrapper.offsetWidth;
+  wrapper.classList.add('flash-red');
+
+  // Remove a face feature
+  removeNextFeature();
+}
+
+function removeNextFeature() {
+  // Find first feature not yet hidden
+  const featureToRemove = FEATURES.find(f => !hiddenFeatures.has(f.key));
+  if (!featureToRemove) return;
+
+  hiddenFeatures.add(featureToRemove.key);
+
+  const tag = document.getElementById(`tag-${featureToRemove.key}`);
+  if (tag) {
+    tag.classList.remove('alive');
+    tag.classList.add('dead', 'just-died');
+    setTimeout(() => tag.classList.remove('just-died'), 600);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  STATS & TIMER
+// ─────────────────────────────────────────────
+function startTimer() {
+  startTime = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('timer-display').textContent = `${m}:${s}`;
+    updateWPM();
+  }, 500);
+}
+
+function clearTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+  startTime = null;
+  document.getElementById('timer-display').textContent = '00:00';
+}
+
+function updateWPM() {
+  if (!startTime) return;
+  const elapsed = (Date.now() - startTime) / 1000 / 60; // minutes
+  const wordsTyped = typedIndex / 5;
+  const wpm = elapsed > 0 ? Math.round(wordsTyped / elapsed) : 0;
+  document.getElementById('wpm-val').textContent = wpm;
+}
+
+function updateStats() {
+  const correct = charState.filter(s => s === 'correct').length;
+  const total = typedIndex;
+  const acc = total > 0 ? Math.round((correct / total) * 100) : 100;
+  const progress = Math.round((typedIndex / passageChars.length) * 100);
+
+  document.getElementById('acc-val').textContent = acc + '%';
+  document.getElementById('prog-val').textContent = progress + '%';
+  document.getElementById('err-val').textContent = totalMistakes;
+}
+
+function endTest() {
+  testComplete = true;
+  testActive = false;
+  clearTimer();
+
+  const elapsed = startTime ? (Date.now() - startTime) / 1000 / 60 : 1;
+  const wpm = Math.round((passageChars.length / 5) / elapsed);
+  const correct = charState.filter(s => s === 'correct').length;
+  const acc = Math.round((correct / passageChars.length) * 100);
+
+  document.getElementById('r-wpm').textContent = wpm;
+  document.getElementById('r-acc').textContent = acc + '%';
+  document.getElementById('r-err').textContent = totalMistakes;
+
+  const isGood = totalMistakes <= 2;
+  document.getElementById('result-title').textContent = isGood ? '🎉 Excellent!' : totalMistakes >= 6 ? '😱 Faceless!' : '✓ Complete';
+  document.getElementById('result-sub').textContent = isGood ? 'Your face survives another day' : 'You lost some features along the way';
+
+  document.getElementById('result-overlay').classList.add('show');
+  document.getElementById('type-input').disabled = true;
+}
+
+// ─────────────────────────────────────────────
+//  CONTROLS
+// ─────────────────────────────────────────────
+function startTest() {
+  loadPassage(currentPassageIdx);
+  initCharState();
+  fullRenderPassage();
+}
+
+function resetTest() {
+  loadPassage(currentPassageIdx);
+  initCharState();
+  fullRenderPassage();
+}
+
+function cyclePassage() {
+  currentPassageIdx = (currentPassageIdx + 1) % PASSAGES.length;
+  loadPassage(currentPassageIdx);
+  initCharState();
+  fullRenderPassage();
+}
+
+function closeResult() {
+  document.getElementById('result-overlay').classList.remove('show');
+}
+
+// ─────────────────────────────────────────────
+//  CAMERA & FACE MESH
+// ─────────────────────────────────────────────
+async function startCamera() {
+  const video = document.getElementById('video');
+  const msg = document.getElementById('no-camera-msg');
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    video.srcObject = stream;
+    video.style.display = 'block';
+    msg.style.display = 'none';
+    cameraActive = true;
+
+    document.getElementById('cam-status-dot').className = 'status-dot live';
+    document.getElementById('cam-status-text').textContent = 'camera on';
+
+    await video.play();
+    initFaceMesh(video);
+  } catch (err) {
+    console.warn('Camera error:', err);
+    msg.innerHTML = `<div class="camera-icon">🚫</div><div style="color:var(--red)">Camera access denied</div><div style="font-size:0.7rem;color:var(--text-dim)">Check browser permissions</div>`;
+  }
+}
+
+function initFaceMesh(videoEl) {
+  const canvas = document.getElementById('face-canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Sync canvas size to video display size
+  function syncCanvasSize() {
+    const rect = videoEl.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  }
+  syncCanvasSize();
+  window.addEventListener('resize', syncCanvasSize);
+
+  faceMesh = new FaceMesh({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+  });
+
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  });
+
+  faceMesh.onResults((results) => {
+    syncCanvasSize();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      latestLandmarks = results.multiFaceLandmarks[0];
+      document.getElementById('face-status').innerHTML = 'face: <span style="color:var(--green)">detected</span>';
+      document.getElementById('cam-overlay').textContent = `${latestLandmarks.length} landmarks`;
+
+      drawFaceMesh(ctx, canvas, latestLandmarks);
+    } else {
+      latestLandmarks = null;
+      document.getElementById('face-status').innerHTML = 'face: <span style="color:var(--red-dim)">not found</span>';
+      document.getElementById('cam-overlay').textContent = '';
+    }
+  });
+
+  // Use MediaPipe Camera utils
+  mpCamera = new Camera(videoEl, {
+    onFrame: async () => {
+      await faceMesh.send({ image: videoEl });
+    },
+    width: 640,
+    height: 480
+  });
+  mpCamera.start();
+}
+
+function drawFaceMesh(ctx, canvas, landmarks) {
+  const W = canvas.width;
+  const H = canvas.height;
+
+  function lm(idx) {
+    const p = landmarks[idx];
+    return { x: p.x * W, y: p.y * H };
+  }
+
+  // Draw connections for each feature group (if not hidden)
+  const featureStyles = {
+    leftBrow:  { color: '#2dff6e', lineWidth: 1.5 },
+    rightBrow: { color: '#2dff6e', lineWidth: 1.5 },
+    leftEye:   { color: '#f5c518', lineWidth: 1.5 },
+    rightEye:  { color: '#f5c518', lineWidth: 1.5 },
+    nose:      { color: '#ff9966', lineWidth: 1.5 },
+    mouth:     { color: '#ff2222', lineWidth: 2 },
+    ears:      { color: '#8888ff', lineWidth: 1.5 },
+  };
+
+  // Draw full mesh faintly
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 0.5;
+  // Draw a light dot for every landmark
+  for (let i = 0; i < landmarks.length; i++) {
+    const p = lm(i);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 0.8, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Draw feature groups
+  Object.entries(LANDMARK_GROUPS).forEach(([key, indices]) => {
+    if (hiddenFeatures.has(key)) return; // skip removed features
+
+    const style = featureStyles[key];
+    ctx.strokeStyle = style.color;
+    ctx.lineWidth = style.lineWidth;
+    ctx.globalAlpha = 0.85;
+    ctx.shadowColor = style.color;
+    ctx.shadowBlur = 6;
+
+    ctx.beginPath();
+    const first = lm(indices[0]);
+    ctx.moveTo(first.x, first.y);
+    for (let i = 1; i < indices.length; i++) {
+      const p = lm(indices[i]);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+
+    // Dots at each landmark
+    indices.forEach(idx => {
+      const p = lm(idx);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+      ctx.fillStyle = style.color;
+      ctx.fill();
+    });
+
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  });
+}
+
+// ─────────────────────────────────────────────
+//  BOOT
+// ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  init();
+  initCharState();
+  fullRenderPassage();
+});
+</script>
+</body>
+</html>
