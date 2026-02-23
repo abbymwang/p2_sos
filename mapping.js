@@ -352,8 +352,16 @@ function resetTest() {
   loadPassage(currentPassageIdx);
 }
 
+function randomPassageIdx(excludeCurrent = true) {
+  if (PASSAGES.length === 1) return 0;
+  let idx;
+  do { idx = Math.floor(Math.random() * PASSAGES.length); }
+  while (excludeCurrent && idx === currentPassageIdx);
+  return idx;
+}
+
 function cyclePassage() {
-  currentPassageIdx = (currentPassageIdx + 1) % PASSAGES.length;
+  currentPassageIdx = randomPassageIdx();
   loadPassage(currentPassageIdx);
 }
 
@@ -466,5 +474,6 @@ function drawFaceMesh(ctx, canvas, landmarks) {
 // ─────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
   await tryLoadCSV();
+  currentPassageIdx = Math.floor(Math.random() * PASSAGES.length);
   init();
 });

@@ -164,7 +164,9 @@
     flex: 1;
     overflow: hidden;
     padding: 4px 0;
+    scrollbar-width: none;
   }
+  #passage-wrapper::-webkit-scrollbar { display: none; }
 
   #passage {
     font-family: 'IBM Plex Serif', serif;
@@ -190,7 +192,7 @@
 
   #author-line {
     font-family: 'IBM Plex Serif', serif;
-    font-size: 0.95rem;
+    font-size: 1.3rem;
     color: var(--red);
     margin-top: 10px;
     min-height: 1.4em;
