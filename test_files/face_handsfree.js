@@ -1,4 +1,9 @@
-/* Code for hands-free integration. Source: https://handsfreejs.netlify.app/ref/model/facemesh.html#with-defaults */
+/* DON'T LOSE YOUR SELF
+Author: Abby Wang
+Date: February 24, 2026
+Description: HTML text, source code, and what not for integration with handsfreejs. Not used but good reference
+
+Source: https://handsfreejs.netlify.app/ref/model/facemesh.html#with-defaults */
 
 const handsfree = new Handsfree({
   facemesh: {

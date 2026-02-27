@@ -1,4 +1,9 @@
-/* Code for face-mapping, using media pipe. Source: https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/face_mesh.md 8?
+<!-- DON'T LOSE YOUR SELF
+Author: Abby Wang
+Date: February 24, 2026
+Description: Code for face-mapping, using media pipe.
+
+Source: https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/face_mesh.md -->
 
 <!DOCTYPE html>
 <html>
@@ -23,6 +28,8 @@ const videoElement = document.getElementsByClassName('input_video')[0];
 const canvasElement = document.getElementsByClassName('output_canvas')[0];
 const canvasCtx = canvasElement.getContext('2d');
 
+
+/*Shows results of mapping here*/
 function onResults(results) {
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);

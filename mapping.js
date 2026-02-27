@@ -1,4 +1,9 @@
-// JS file for implementing Google's MediaPipe API for all face mapping. 
+/* DON'T LOSE YOUR SELF
+Author: Abby Wang
+Date: February 24, 2026
+Description: JS file, using Google AI's MediaPipe API for face mapping. Coded with the help of Claude. 
+
+Source: https://github.com/google-ai-edge/mediapipe/blob/master/docs/getting_started/javascript.md */
 
 // ─────────────────────────────────────────────────────────────
 //  PASSAGES — { quote, author }
